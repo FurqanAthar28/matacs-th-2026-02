@@ -11,7 +11,7 @@
 - [WRITEUP.md](WRITEUP.md): my answers to the five questions
 - [PROMPTS.md](PROMPTS.md): the prompt I would send to the AI
 - [ranking.json](ranking.json): my ranking of proposals A to E
-- [diagram/](diagram/): the flow from upload to ranked output
+- [diagram/flow.png](diagram/flow.png): the flow from upload to ranked output
 
 ## How I used AI
 
