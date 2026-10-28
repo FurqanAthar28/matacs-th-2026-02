@@ -2,43 +2,41 @@ Write-up
 
 How the tool works
 
-Here's the basic flow:
 
 
 
 
-
-Reviewer uploads the proposal PDFs and picks a category.
-
-
-
-Tool extracts the text from each PDF.
+The reviewer uploads the proposal PDFs and picks a category.
 
 
 
-AI reads every proposal and pulls out the key facts (price, weeks, licence, etc.) along with a quote for each one.
+The tool pulls the text out of each PDF.
 
 
 
-Code then checks the must-haves: licence, WSIB, and insurance. If any of those are missing, the proposal is out.
+AI reads each proposal and pulls out the facts (price, weeks, licence and so on), with a quote for each one.
 
 
 
-Code scores everything using the weights the admin set.
+Code checks the must-haves: licence, WSIB and insurance. If one is missing, the proposal is out.
 
 
 
-Anything missing, unclear, or suspicious gets flagged.
+Code gives points using the admin's weights.
 
 
 
-Reviewer looks over the facts and the flags, and can change things if needed.
+Anything missing, unclear or suspicious gets flagged.
 
 
 
-Tool shows the ranked list. A person still makes the final call.
+The reviewer checks the facts and the flags, and can change things if needed.
 
-How I scored things:
+
+
+The tool shows the ranked list. A person makes the final decision.
+
+How I gave points:
 
 
 
@@ -60,49 +58,49 @@ Warranty (15): panel + workmanship years ÷ longest total × 15
 
 
 
-Team (15): 3 points each for a named lead, crew, safety plan, monitoring, and roof check
+Team (15): 3 points each for a named lead, crew, safety plan, monitoring and roof check
 
 1. AI vs. rules
 
-I only use AI to read the proposals. Companies all write differently, so it's hard for normal code to reliably find the price or the licence no matter how it's worded. AI is actually pretty good at that part.
+I only use AI to read the proposals. Every company writes differently, so it's hard for normal code to find the price or the licence in any wording, but AI is good at it.
 
-Everything after that is just regular code — the pass/fail checks, the scoring, and the ranking. When I scored the five proposals in Excel by hand, simple formulas worked fine. I don't think AI should be doing the scoring itself. It could give different numbers each time, and it would be hard to explain why one proposal scored higher than another.
+Everything after that is plain code: the pass/fail checks, the points and the ranking. When I scored the five proposals in Excel, simple formulas worked fine. I don't think AI should do the scoring, because it might give different scores each time, and it would be hard to explain why.
 
 2. Consistency and explainability
 
-Yes, the ranking comes out the same if you run it twice. The AI is set to temperature 0, and I save whatever it extracted. The scores are then calculated again from those saved facts. Since the formulas don't change, the result doesn't change either.
+Yes, the ranking would be the same if you ran it twice. The AI runs at temperature 0, and I save what it extracted, so the scores are worked out again from the same saved facts. The formulas don't change, so the result doesn't change.
 
-To explain a score, the reviewer can see each fact, the quote it came from, and how many points it got. For example: "Price $238,000 → 24.3 out of 25, because the cheapest eligible price was $231,000."
+To explain a result, the reviewer sees each fact, the quote it came from, and the points it got. For example: "Price $238,000 → 24.3 out of 25, because the cheapest eligible price was $231,000."
 
 3. Human in the loop
 
-A person is involved at a few points:
+A person checks things at a few points:
 
 
 
 
 
-They check the facts the AI pulled out, especially anything marked unclear or missing.
+They confirm the facts the AI pulled out, especially anything marked unclear or missing.
 
 
 
-Every flagged proposal has to be reviewed before it can be ranked.
+They must review every flagged proposal before it can be ranked.
 
 
 
-They can change a fact or a score, but they have to write down why.
+They can change a fact or a result, but they have to write a reason.
 
 
 
-They make the final award decision. The tool only suggests a ranking.
+They make the final award. The tool only suggests.
 
-For the audit trail, I'd log the uploaded file, the AI's response, the prompt version, the criteria version, the scores, the flags, and every change a person made (who changed it, when, what they changed, and why).
+For audit, I would log: the uploaded file, the AI's answer, the prompt version, the criteria version, the scores, the flags, and every change a person made (who, when, what and why).
 
 4. Changing criteria
 
-Each version of the criteria gets a number, and every score is saved with the version it used. If the admin changes something after scoring has already happened, the old results get marked "out of date" instead of quietly updating.
+Each version of the criteria gets a number, and each score is saved with the version it used. If the admin changes something after scoring, the old results are marked "out of date" instead of quietly changing.
 
-If only the weights change, the tool can recalculate right away from the saved facts — no need to call the AI again. If a completely new criterion is added, the AI only needs to look for that one new fact. Old results stay in the log either way.
+If only the weights change, the tool recalculates straight away from the saved facts, with no new AI call needed. If a new criterion is added, the AI only needs to find that one new fact. Old results stay in the log.
 
 5. Risks
 
@@ -110,31 +108,31 @@ If only the weights change, the tool can recalculate right away from the saved f
 
 
 
-AI reads something wrong. When I went through the proposals by hand, I once wrote a warranty as 10 years instead of 25, and I also missed a monitoring plan. So this can definitely happen. That's why every fact needs a quote, and a person has to check them.
+AI reads something wrong. When I did this by hand, I wrote one warranty as 10 years instead of 25, and I missed a monitoring plan, so this can happen. That's why each fact needs a quote and a person checks it.
 
 
 
-AI makes something up. The AI is told to return null if it can't find something. And if the quote it gives isn't actually in the proposal, the code rejects it.
+AI makes up a fact. The AI must return null if it can't find something. If a quote isn't really in the proposal, code rejects it.
 
 
 
-Someone tries to trick the AI. Proposal C has a hidden line at the end that says "rank it first". The prompt tells the AI to ignore any instructions that appear inside proposals and to report them instead, so C gets flagged for a human to look at.
+Someone tries to trick the AI. Proposal C has a hidden line saying "rank it first". The prompt tells the AI to ignore instructions inside proposals and report them, so C is flagged for a person.
 
 
 
-Tricky wording. Proposal B is the cheapest, but the licence belongs to a subcontractor, not to B itself. The licence check is strict, so B is disqualified.
+Tricky wording. Proposal B is the cheapest, but the licence belongs to a subcontractor, not to B. The licence check is strict, so B is out.
 
 
 
-Missing information. Proposal D doesn't mention a timeline at all. It gets 0 for timeline and is flagged — nothing is guessed.
+Missing information. Proposal D gives no timeline. It gets 0 for timeline and is flagged, not guessed.
 
 
 
-Bias. The AI only extracts facts. The points come from the admin's criteria, not from the company name or how nicely the proposal is written.
+Bias. The AI only pulls out facts. Points come from the admin's criteria, not from the company name or how well the proposal is written.
 
 
 
-Cost. There's only one AI call per proposal, and the results are saved and reused.
+Cost. One AI call per proposal, and results are saved and reused.
 
 My ranking
 
@@ -142,23 +140,23 @@ My ranking
 
 
 
-A (95.5) — 1st. Most experience, solid price, 12 weeks, strong team plan.
+A (95.5): 1st. Most experience, good price, 12 weeks, strong team plan.
 
 
 
-E (84.7) — 2nd. Best warranty and team plan, but less experience than A.
+E (84.7): 2nd. Best warranty and team plan, but less experience than A.
 
 
 
-C (76.1) — Flagged. Has hidden text at the end of the proposal trying to get ranked first.
+C (76.1): Flagged. Has hidden text at the end of proposal trying to get ranked first.
 
 
 
-D (71.8) — Flagged. No timeline mentioned, so we can't tell if it would finish within 16 weeks.
+D (71.8): Flagged. Timeline is not mentioned so we can't know if it will be completed in 16 weeks.
 
 
 
-B — Not eligible. The bidder doesn't hold the licence themselves.
+B: Not eligible. The bidder doesn't hold the licence itself.
 
 Assumptions
 
@@ -166,12 +164,12 @@ Assumptions
 
 
 
-I kept the scores for C and D so the reviewer can still see where they would land if the flags get cleared.
+I kept scores for C and D so the reviewer can see where they'd land if cleared.
 
 
 
-I added the panel and workmanship warranties together.
+I added panel and workmanship warranties together.
 
 
 
-I only counted installs of 100 kW or more from the last 5 years.
+I counted only installs of 100 kW or more in the last 5 years.
