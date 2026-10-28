@@ -1,8 +1,8 @@
 # MATACS-TH-2026-02
 
-**Name:** [Your full name]
+**Name:** Furqan Athar
 **Reference:** MATACS-TH-2026-02
-**Time spent:** [for example: about 4 hours over 2 days]
+**Time spent:**  about 9 hours  
 
 ## Files
 
