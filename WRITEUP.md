@@ -1,72 +1,177 @@
-# Write-up: AI Proposal Triage Design
+Write-up
 
-## Summary of the flow
-1. Reviewer uploads proposal PDFs and selects a category.
-2. Code extracts text from each PDF.
-3. AI extracts facts into fixed fields, with a quote for each fact (see PROMPTS.md).
-4. Code checks mandatory criteria (pass/fail).
-5. Code calculates weighted scores using the admin's criteria and weights.
-6. Code flags problems: missing facts, unclear facts, suspicious text.
-7. Reviewer checks extracted facts and flags, then confirms or overrides.
-8. Tool produces the ranked list. A human makes the award decision.
+How the tool works
 
-## Scoring method used
-- Experience (30%): installs ÷ highest installs × 30
-- Price (25%): lowest price ÷ this price × 25
-- Timeline (15%): shortest weeks ÷ these weeks × 15 (missing = 0 and flagged)
-- Warranty (15%): (panel + workmanship years) ÷ highest total × 15
-- Team and approach (15%): 3 points each for named lead, crew, safety plan, monitoring and roof assessment
-- Only eligible proposals are compared against each other.
+Here's the basic flow:
 
-## 1. AI vs. rules
-- **AI is used for one step: reading proposals and extracting facts.** Proposals are free text written in different ways, and AI is good at finding "price", "weeks" or "licence" in any wording.
-- **Everything else is plain code:** pass/fail checks, score formulas, ranking and flags.
-- **Why:** rules give the same answer every time and are easy to explain. If AI did the scoring, the same proposal could get different scores on different runs, and it would be hard to say why.
-- The AI never decides who wins. It only fills in facts that code and humans then use.
 
-## 2. Consistency and explainability
-- AI runs at temperature 0 with a fixed JSON format, and each extraction is **saved**, so scores are recalculated from saved facts and not re-extracted each time.
-- Scoring formulas are fixed code, so **the same facts always give the same scores and ranking**.
-- Every fact has a **quote from the proposal**. The reviewer sees, for each criterion: the value, the quote, the points and the formula.
-- Example: "Price: $238,000 → 24.3/25 because lowest eligible price is $231,000."
 
-## 3. Human in the loop
-A person is involved at these points:
-- **Fact check:** the reviewer confirms or corrects extracted facts, especially any marked "unclear" or "not found".
-- **Flags:** every flagged proposal must be reviewed by a person before it can be ranked.
-- **Override:** the reviewer can change a fact, a pass/fail result or a rank, but must enter a reason.
-- **Final award:** only a human makes the decision. The tool only recommends.
 
-**Audit log records:** uploaded file and its hash, extracted text, prompt version, AI model, AI output, criteria version and weights, each score, every flag, every human edit or override (who, when, old value, new value, reason), and the final ranking.
 
-## 4. Changing criteria
-- Criteria and weights are stored with a **version number**. Each score is saved with the version it used.
-- If the admin edits criteria after scoring, existing results are **marked "out of date"**, not silently changed.
-- The reviewer can rescore. If only **weights** changed, code recalculates instantly from saved facts with no AI call. If a **new criterion** is added, the AI extracts only the new field.
-- Old results stay in the log, so you can always see what the ranking was under each version.
-- All proposals in one ranking must use the **same criteria version**.
+Reviewer uploads the proposal PDFs and picks a category.
 
-## 5. Risks and safeguards
-| Risk | Safeguard |
-|---|---|
-| Wrong extraction | Quote required for each fact; reviewer confirms facts; unclear facts flagged |
-| Made-up facts | "null if not found" rule; a fact without a matching quote in the text is rejected by code |
-| Manipulation (prompt injection) | Proposal treated as data, not instructions; suspicious text reported and flagged for a human (Proposal C) |
-| Misleading wording | Mandatory checks are strict, e.g. the licence must be held by the bidder, not a subcontractor (Proposal B) |
-| Missing information | Scored 0 and flagged, never guessed (Proposal D's timeline) |
-| Bias | AI only extracts facts; scoring uses only the admin's criteria, not company name, tone or writing style |
-| Over-reliance on AI | Human confirms facts and makes the final decision |
-| Cost | One AI call per proposal; results saved and reused; rescoring weights needs no AI call |
-| PDF reading errors (scans, tables) | Extracted text shown to reviewer; very short or empty text is flagged |
 
-## How the sample set was handled
-- **A (95.5): Rank 1.** Most experience, within budget, 12 weeks, strong team plan.
-- **E (84.7): Rank 2.** Longest warranty and most complete team plan, less experience.
-- **C (76.1): Flagged.** Contains text telling automated systems to rank it first. Ignored, and sent to a human.
-- **D (71.8): Flagged.** No timeline given, so the 16-week requirement can't be confirmed.
-- **B: Ineligible.** Lowest price, but the bidder does not hold the electrical licence; a subcontractor would.
 
-## Assumptions
-- Flagged proposals keep their calculated score so the reviewer can see where they would rank if cleared.
-- "Experience" counts only commercial installs of 100 kW or more in the last 5 years, as stated by the bidder.
-- Panel and workmanship warranties are added together for the warranty score.
+Tool extracts the text from each PDF.
+
+
+
+AI reads every proposal and pulls out the key facts (price, weeks, licence, etc.) along with a quote for each one.
+
+
+
+Code then checks the must-haves: licence, WSIB, and insurance. If any of those are missing, the proposal is out.
+
+
+
+Code scores everything using the weights the admin set.
+
+
+
+Anything missing, unclear, or suspicious gets flagged.
+
+
+
+Reviewer looks over the facts and the flags, and can change things if needed.
+
+
+
+Tool shows the ranked list. A person still makes the final call.
+
+How I scored things:
+
+
+
+
+
+Experience (30): installs ÷ most installs × 30
+
+
+
+Price (25): cheapest price ÷ this price × 25
+
+
+
+Timeline (15): fastest weeks ÷ these weeks × 15. No timeline = 0
+
+
+
+Warranty (15): panel + workmanship years ÷ longest total × 15
+
+
+
+Team (15): 3 points each for a named lead, crew, safety plan, monitoring, and roof check
+
+1. AI vs. rules
+
+I only use AI to read the proposals. Companies all write differently, so it's hard for normal code to reliably find the price or the licence no matter how it's worded. AI is actually pretty good at that part.
+
+Everything after that is just regular code — the pass/fail checks, the scoring, and the ranking. When I scored the five proposals in Excel by hand, simple formulas worked fine. I don't think AI should be doing the scoring itself. It could give different numbers each time, and it would be hard to explain why one proposal scored higher than another.
+
+2. Consistency and explainability
+
+Yes, the ranking comes out the same if you run it twice. The AI is set to temperature 0, and I save whatever it extracted. The scores are then calculated again from those saved facts. Since the formulas don't change, the result doesn't change either.
+
+To explain a score, the reviewer can see each fact, the quote it came from, and how many points it got. For example: "Price $238,000 → 24.3 out of 25, because the cheapest eligible price was $231,000."
+
+3. Human in the loop
+
+A person is involved at a few points:
+
+
+
+
+
+They check the facts the AI pulled out, especially anything marked unclear or missing.
+
+
+
+Every flagged proposal has to be reviewed before it can be ranked.
+
+
+
+They can change a fact or a score, but they have to write down why.
+
+
+
+They make the final award decision. The tool only suggests a ranking.
+
+For the audit trail, I'd log the uploaded file, the AI's response, the prompt version, the criteria version, the scores, the flags, and every change a person made (who changed it, when, what they changed, and why).
+
+4. Changing criteria
+
+Each version of the criteria gets a number, and every score is saved with the version it used. If the admin changes something after scoring has already happened, the old results get marked "out of date" instead of quietly updating.
+
+If only the weights change, the tool can recalculate right away from the saved facts — no need to call the AI again. If a completely new criterion is added, the AI only needs to look for that one new fact. Old results stay in the log either way.
+
+5. Risks
+
+
+
+
+
+AI reads something wrong. When I went through the proposals by hand, I once wrote a warranty as 10 years instead of 25, and I also missed a monitoring plan. So this can definitely happen. That's why every fact needs a quote, and a person has to check them.
+
+
+
+AI makes something up. The AI is told to return null if it can't find something. And if the quote it gives isn't actually in the proposal, the code rejects it.
+
+
+
+Someone tries to trick the AI. Proposal C has a hidden line at the end that says "rank it first". The prompt tells the AI to ignore any instructions that appear inside proposals and to report them instead, so C gets flagged for a human to look at.
+
+
+
+Tricky wording. Proposal B is the cheapest, but the licence belongs to a subcontractor, not to B itself. The licence check is strict, so B is disqualified.
+
+
+
+Missing information. Proposal D doesn't mention a timeline at all. It gets 0 for timeline and is flagged — nothing is guessed.
+
+
+
+Bias. The AI only extracts facts. The points come from the admin's criteria, not from the company name or how nicely the proposal is written.
+
+
+
+Cost. There's only one AI call per proposal, and the results are saved and reused.
+
+My ranking
+
+
+
+
+
+A (95.5) — 1st. Most experience, solid price, 12 weeks, strong team plan.
+
+
+
+E (84.7) — 2nd. Best warranty and team plan, but less experience than A.
+
+
+
+C (76.1) — Flagged. Has hidden text at the end of the proposal trying to get ranked first.
+
+
+
+D (71.8) — Flagged. No timeline mentioned, so we can't tell if it would finish within 16 weeks.
+
+
+
+B — Not eligible. The bidder doesn't hold the licence themselves.
+
+Assumptions
+
+
+
+
+
+I kept the scores for C and D so the reviewer can still see where they would land if the flags get cleared.
+
+
+
+I added the panel and workmanship warranties together.
+
+
+
+I only counted installs of 100 kW or more from the last 5 years.
