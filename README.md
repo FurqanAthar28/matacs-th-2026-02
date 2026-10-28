@@ -1,8 +1,10 @@
 # MATACS-TH-2026-02
 
 **Name:** Furqan Athar
+
 **Reference:** MATACS-TH-2026-02
-**Time spent:**  about 9 hours  
+
+**Time spent:** about 9 hours
 
 ## Files
 
